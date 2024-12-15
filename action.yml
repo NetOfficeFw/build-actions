@@ -1,0 +1,56 @@
+name: trusted-sign-nuget
+author: Jozef Izso
+description: 'Sign NuGet packages with Azure Trusted Signing'
+branding:
+  icon: 'shield'
+  color: 'yellow'
+
+inputs:
+  nupkg-path:
+    required: true
+    type: string
+    default: '**/*.nupkg'
+  trusted-signing-file:
+    required: true
+    type: string
+    default: '.github/trusted-signing.json'
+  working-directory:
+    required: true
+    type: string
+  publisher-name:
+    required: true
+    type: string
+  description:
+    required: true
+    type: string
+  description-url:
+    required: true
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup dotnet sign
+      run: |
+        dotnet tool install --tool-path . --prerelease 
+        dotnet tool install --global Knapcode.CertificateExtractor --version 0.1.1
+
+    - name: Sign packages
+      shell: pwsh
+      run: |
+        $trustedsigning = Get-Content '${{ inputs.trusted-signing-file }}' | ConvertFrom-Json
+        ./sign code trusted-signing `
+        '${{ inputs.nupkg-path }}' `
+        --base-directory '${{ inputs.working-directory }}' `
+        --publisher-name '${{ inputs.publisher-name }}' `
+        --description '${{ inputs.description }}' `
+        --description-url '${{ inputs.description-url }}' `
+        --trusted-signing-endpoint $trustedsigning.Endpoint `
+        --trusted-signing-account $trustedsigning.CodeSigningAccountName `
+        --trusted-signing-certificate-profile $trustedsigning.CertificateProfileName
+
+    - name: Extract certificate
+      shell: pwsh
+      run: |
+        $nupkg = Get-ChildItem -Filter '${{ inputs.working-directory }}\*.nupkg' | Select-Object -First 1
+        nuget-cert-extractor --file $nupkg --output certificates --code-signing --author --leaf
