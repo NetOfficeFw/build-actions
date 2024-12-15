@@ -31,6 +31,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup dotnet sign
+      shell: pwsh
       run: |
         dotnet tool install --tool-path . --prerelease 
         dotnet tool install --global Knapcode.CertificateExtractor --version 0.1.1
